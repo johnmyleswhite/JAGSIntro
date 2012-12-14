@@ -12,7 +12,7 @@
 
 ---
 
-# A Simple Example
+# A Simple Example of JAGS Code
 
 	model
 	{
@@ -137,7 +137,7 @@
 
 ---
 
-# For Loops do Not Introduce a New Scope
+# For Loops do not Introduce a New Scope
 
 	model
 	{
@@ -147,6 +147,22 @@
 	    epsilon ~ dnorm(0, 1)
 	    x.pair[i] <- x[i] + epsilon
 	  }
+
+	  mu ~ dunif(-1000, 1000)
+	}
+
+---
+
+# A Translation of a Broken For Loop
+
+	model
+	{
+	  x[1] ~ dnorm(mu, 1)
+	  epsilon ~ dnorm(0, 1)
+	  x.pair[1] <- x[1] + epsilon
+	  x[2] ~ dnorm(mu, 1)
+	  epsilon ~ dnorm(0, 1)
+	  x.pair[2] <- x[2] + epsilon
 
 	  mu ~ dunif(-1000, 1000)
 	}
@@ -164,21 +180,28 @@
 
 # Observed Data Must Use Stochastic Nodes
 
-_TWO VALID MATHEMATICAL FORMULATIONS_:
+_Two valid mathematical formulations_:
 
 $$
 y_{i} \sim \mathcal{N}(ax_{i} + b, 1)
 $$
 
 $$
-y_{i} = ax_{i} + b + \epsilon_{i}\text{ where }\epsilon_{i} \sim \mathcal{N}(0, 1)
+y_{i} = ax_{i} + b + \epsilon_{i}
+$$
+$$
+\text{ where }\epsilon_{i} \sim \mathcal{N}(0, 1)
 $$
 
-_VALID JAGS CODE_:
+---
+
+# Observed Data Must Use Stochastic Nodes
+
+_Valid jags code_:
 
 	y[i] ~ dnorm(a * x[i] + b, 1)
 
-_INVALID JAGS CODE_:
+_Invalid jags code_:
 
 	epsilon[i] ~ dnorm(0, 1)
 	y[i] <- a * x[i] + b + epsilon[i]
@@ -330,7 +353,17 @@ _INVALID JAGS CODE_:
 
 # Plotting the Samples
 
-GRAPHIC GOES HERE PRE- AND POST- BURN-IN
+\begin{center}
+	\includegraphics[scale = 0.4]{pre_burnin.png}
+\end{center}
+
+---
+
+# Plotting the Samples
+
+\begin{center}
+	\includegraphics[scale = 0.4]{post_burnin.png}
+\end{center}
 
 ---
 
@@ -362,7 +395,9 @@ GRAPHIC GOES HERE PRE- AND POST- BURN-IN
 
 # Summarizing the Results
 
-TABLE GOES HERE
+\begin{center}
+	\includegraphics[scale = 0.6]{table.png}
+\end{center}
 
 ---
 
