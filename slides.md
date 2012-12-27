@@ -371,7 +371,7 @@ _Invalid jags code_:
 	                   n.chains = 4,
 	                   n.adapt = 1000)
 
-	mcmc.samples <- coda.samples(jags, c("a", "b"), 5000)
+	mcmc.samples <- coda.samples(jags, c("a", "b"), 50)
 
 	summary(mcmc.samples)
 
