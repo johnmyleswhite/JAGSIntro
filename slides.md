@@ -4,6 +4,21 @@
 
 ---
 
+# What I'll Assume for This Talk
+
+* You know what Bayesian inference is:
+	* Inference is the computation of a posterior distribution
+	* All desired results are derived from the posterior
+* You know what typical distributions look like:
+	* Bernoulli / Binomial
+	* Uniform
+	* Beta
+	* Normal
+	* Exponential / Gamma
+	* ...
+
+---
+
 # What is Probabilistic Programming?
 
 \begin{center}
@@ -16,15 +31,15 @@
 
 	model
 	{
+	  alpha <- 1
+	  beta <- 1
+
+	  p ~ dbeta(alpha, beta)
+
 	  for (i in 1:N)
 	  {
 	    x[i] ~ dbern(p)
 	  }
-
-	  p ~ dbeta(alpha, beta)
-
-	  alpha <- 1
-	  beta <- 1
 	}
 
 ---
@@ -34,8 +49,8 @@
 * Code in a probabilistic programming languages specifies a model, not a use case
 * A single model specification can be reused in many contexts:
 	* Monte Carlo simulations
-	* Maximum likelihood estimation
-	* Sampling from posterior distributions
+	* Maximum A Posteriori (MAP) estimation
+	* Sampling from a posterior distribution
 
 ---
 
@@ -73,15 +88,26 @@
 
 ---
 
+# JAGS Syntax: Deterministic Assignment
+
+	alpha <- 1
+
+---
+
 # JAGS Syntax: Stochastic Assignment
 
 	p ~ dbeta(1, 1)
 
 ---
 
-# JAGS Syntax: Deterministic Assignment
+# JAGS Semantics: Probability Distributions
 
-	alpha <- 1
+* `dbern` / `dbinom`
+* `dunif`
+* `dbeta`
+* `dnorm`
+* `dexp` / `dgamma`
+* ...
 
 ---
 
@@ -98,15 +124,15 @@
 
 	model
 	{
+	  alpha <- 1
+	  beta <- 1
+
+	  p ~ dbeta(alpha, beta)
+
 	  for (i in 1:N)
 	  {
 	    x[i] ~ dbern(p)
 	  }
-
-	  p ~ dbeta(alpha, beta)
-
-	  alpha <- 1
-	  beta <- 1
 	}
 
 ---
@@ -115,11 +141,11 @@
 
 	model
 	{
+	  p ~ dbeta(1, 1)
+
 	  x[1] ~ dbern(p)
 	  x[2] ~ dbern(p)
 	  x[3] ~ dbern(p)
-
-	  p ~ dbeta(1, 1)
 	}
 
 ---
@@ -128,11 +154,11 @@
 
 	model
 	{
+	  p ~ dbeta(1, 1)
+
 	  x[2] ~ dbern(p)
 	  x[3] ~ dbern(p)
 	  x[1] ~ dbern(p)
-
-	  p ~ dbeta(1, 1)
 	}
 
 ---
@@ -160,6 +186,7 @@
 	  x[1] ~ dnorm(mu, 1)
 	  epsilon ~ dnorm(0, 1)
 	  x.pair[1] <- x[1] + epsilon
+
 	  x[2] ~ dnorm(mu, 1)
 	  epsilon ~ dnorm(0, 1)
 	  x.pair[2] <- x[2] + epsilon
@@ -175,6 +202,7 @@
 * All constants like `N` must be known at compile-time
 * Deterministic nodes are nothing more than shorthand
 	* A deterministic node can always be optimized out!
+* Stochastic nodes are the essence of the program
 
 ---
 
@@ -211,9 +239,8 @@ _Invalid jags code_:
 # What's Badly Missing from JAGS Syntax?
 
 * if / else
-* Can only express mixture models using summation
-	* Some cases are handled by a `dsum()` function
-	* But others would require a non-existent `dprod()` function
+* Can sometimes get away with a `dsum()` function
+* Some cases would require a non-existent `dprod()` function
 
 ---
 
@@ -221,16 +248,16 @@ _Invalid jags code_:
 
 	model
 	{
+	  p ~ dbeta(1, 1)
+
 	  for (i in 1:N)
 	  {
-	    alpha[i] ~ dbern(p)
 	    exp[i] ~ dexp(1)
 	    norm[i] ~ dnorm(5, 1)
+	    alpha[i] ~ dbern(p)
 	    x[i] ~ dsum(alpha[i] * exp[i],
 	    	        (1 - alpha[i]) * norm[i])
 	  }
-
-	  p ~ dbeta(1, 1)
 	}
 
 ---
@@ -248,17 +275,17 @@ _Invalid jags code_:
 
 	model
 	{
-	  for (i in 1:N)
-	  {
-	    y[i] ~ dnorm(mu[i], tau)
-	    mu[i] <- a * x[i] + b
-	  }
+	  a ~ dnorm(0, 0.0001)
+	  b ~ dnorm(0, 0.0001)
 
 	  tau <- pow(sigma, -2)
 	  sigma ~ dunif(0, 100)
 
-	  a ~ dnorm(0, 0.0001)
-	  b ~ dnorm(0, 0.0001)
+	  for (i in 1:N)
+	  {
+	    mu[i] <- a * x[i] + b
+	    y[i] ~ dnorm(mu[i], tau)
+	  }
 	}
 
 ---
@@ -267,14 +294,14 @@ _Invalid jags code_:
 
 	model
 	{
+	  a ~ dnorm(0, 0.0001)
+	  b ~ dnorm(0, 0.0001)
+
 	  for (i in 1:N)
 	  {
 	    y[i] ~ dbern(p[i])
 	    logit(p[i]) <- a * x[i] + b
 	  }
-
-	  a ~ dnorm(0, 0.0001)
-	  b ~ dnorm(0, 0.0001)
 	}
 
 ---
@@ -283,20 +310,20 @@ _Invalid jags code_:
 
 	model
 	{
-	  for (i in 1:N)
-	  {
-	    y[i] ~ dnorm(mu[i], tau)
-	    mu[i] <- a[g[i]] * x[i] + b[g[i]]
-	  }
+	  mu.a ~ dnorm(0, 0.0001)
+	  mu.b ~ dnorm(0, 0.0001)
+	  ...
+
 	  for (j in 1:K)
 	  {
 	    a[j] ~ dnorm(mu.a, tau.a)
 	    b[j] ~ dnorm(mu.b, tau.b)
 	  }
-
-	  mu.a ~ dnorm(0, 0.0001)
-	  mu.b ~ dnorm(0, 0.0001)
-	  ...
+	  for (i in 1:N)
+	  {
+	    mu[i] <- a[g[i]] * x[i] + b[g[i]]
+	    y[i] ~ dnorm(mu[i], tau)
+	  }
 	}
 
 ---
@@ -305,13 +332,6 @@ _Invalid jags code_:
 
 	model
 	{
-	  for (i in 1:N)
-	  {
-	    z[i] ~ dbern(p)
-	    mu[i] <- z[i] * mu1 + (1 - z[i]) * mu2
-	    x[i] ~ dnorm(mu[i], tau)
-	  }
-
 	  p ~ dbeta(1, 1)
 
 	  mu1 ~ dnorm(0, 0.0001)
@@ -319,6 +339,13 @@ _Invalid jags code_:
 
 	  tau <- pow(sigma, -2)
 	  sigma ~ dunif(0, 100)
+
+	  for (i in 1:N)
+	  {
+	    z[i] ~ dbern(p)
+	    mu[i] <- z[i] * mu1 + (1 - z[i]) * mu2
+	    x[i] ~ dnorm(mu[i], tau)
+	  }
 	}
 
 ---
@@ -337,24 +364,25 @@ _Invalid jags code_:
 
 	library("rjags")
 
-	jags <- jags.model("bernoulli.bugs",
+	jags <- jags.model("logit.bugs",
 	                   data = list("x" = x,
-	                               "N" = N
+	                               "N" = N,
+	                               "y" = y),
 	                   n.chains = 4,
 	                   n.adapt = 1000)
 
-	mcmc.samples <- coda.samples(jags, c("p"))
-
-	plot(mcmc.samples)
+	mcmc.samples <- coda.samples(jags, c("a", "b"), 5000)
 
 	summary(mcmc.samples)
 
+	plot(mcmc.samples)
+
 ---
 
-# Plotting the Samples
+# Summarizing the Results
 
 \begin{center}
-	\includegraphics[scale = 0.4]{pre_burnin.png}
+	\includegraphics[scale = 0.6]{table.png}
 \end{center}
 
 ---
@@ -362,7 +390,7 @@ _Invalid jags code_:
 # Plotting the Samples
 
 \begin{center}
-	\includegraphics[scale = 0.4]{post_burnin.png}
+	\includegraphics[scale = 0.4]{pre_burnin.png}
 \end{center}
 
 ---
@@ -376,6 +404,15 @@ _Invalid jags code_:
 
 ---
 
+# Adaptive Phase
+
+* JAGS has tunable parameters that need to adapt to the data
+* Controlled by `n.adapt` parameter
+* JAGS allows you to treat adaptive phase as part of burn-in
+* For simple models, adaptation may not be necessary
+
+---
+
 # Mixing
 
 * How do we know that burn-in is complete?
@@ -385,18 +422,10 @@ _Invalid jags code_:
 
 ---
 
-# Adaptive Phase
-
-* JAGS has tunable parameters that need to adapt to the data
-* Can typically do this during the burn-in period
-* For simple models, adaptation may not be necessary
-
----
-
-# Summarizing the Results
+# Plotting the Samples after Burn-In
 
 \begin{center}
-	\includegraphics[scale = 0.6]{table.png}
+	\includegraphics[scale = 0.4]{post_burnin.png}
 \end{center}
 
 ---
@@ -415,7 +444,7 @@ _Invalid jags code_:
 * The BUGS Book
 * The JAGS Manual
 * My GitHub Repo of JAGS Examples
-* NIPS Workshop Proceedings
+* 2012 NIPS Workshop on Probabilistic Programming
 
 ---
 
@@ -428,6 +457,7 @@ _Invalid jags code_:
 
 ---
 
-# Appendix 2: Conjugacy
+# Appendix 2: Gibbs Sampling
 
-* Gibbs sampling
+* Conjugacy
+* Any closed form posterior
